@@ -114,6 +114,7 @@ create_valid_file_name <- function(file_path, file_type = ".png") {
 insert_image_code <- function() {
 
   doc_id <- rstudioapi::getActiveDocumentContext()$id
+
   if (doc_id %in% c("#console", "#terminal")){
     stop("You can`t insert an image in the console nor in the terminal. Please select a line in the source editor.")
   }
@@ -127,9 +128,26 @@ insert_image_code <- function() {
   file_path <- gsub("^~", Sys.getenv("HOME"), file_path)
   img_file_name <- create_valid_file_name(file_path, file_type = ".png")
 
+  # custom the name of the image by the file name + timestamp
+  img_file_name <- paste0(tools::file_path_sans_ext(basename(file_path)),"_",format(Sys.time(),"%Y-%m-%dT%H-%M-%S"),".png")
+  # custom the path of the image
+  img_path <- file.path(dirname(file_path),"images")
+
+  if (!dir.exists(img_path)) dir.create(img_path)
+
   # refactor;3;3;get file ending
-  save_clipboard_image(img_file_name, dir = dirname(file_path))
-  position <- rstudioapi::getActiveDocumentContext()$selection[[1]]$range$start
-  code_to_insert <- imageclipr_env$newCode
-  rstudioapi::insertText(position, code_to_insert(img_file_name), id = doc_id)
+  save_clipboard_image(img_file_name, dir = img_path)
+
+  # code_to_insert <- imageclipr_env$newCode
+  code_to_insert <- paste0("![](", file.path("images", img_file_name), ")")
+  
+  if (length(rstudioapi::getActiveDocumentContext()$selection) == 1) {
+    position <- rstudioapi::getActiveDocumentContext()$selection[[1]]$range$start
+    rstudioapi::insertText(position, code_to_insert, id = doc_id)
+  }
+  # markdown file in visual mode
+  # TODO: escape /[/] in visual mode
+  else{
+    rstudioapi::insertText(code_to_insert, id = doc_id)
+  }
 }
